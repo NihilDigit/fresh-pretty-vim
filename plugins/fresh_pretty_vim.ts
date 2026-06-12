@@ -81,11 +81,29 @@ function animateStatusline(from: PluginAnimationEdge = "left", durationMs = 70):
   }
 }
 
-function animateOverlayOpen(durationMs = 95): void {
+function animateStatuslineRight(from: PluginAnimationEdge = "right", durationMs = 90): void {
   try {
     const screen = editor.getScreenSize();
-    const width = Math.max(32, Math.floor(screen.width * 0.56));
-    const height = Math.max(8, Math.floor(screen.height * 0.36));
+    const width = Math.min(screen.width, 46);
+    editor.animateArea(
+      {
+        x: Math.max(0, screen.width - width),
+        y: Math.max(0, screen.height - 1),
+        width,
+        height: 1,
+      },
+      { kind: "slideIn", from, durationMs, delayMs: 0 },
+    );
+  } catch (err) {
+    editor.debug(`fresh_pretty_vim right animation: ${String(err)}`);
+  }
+}
+
+function animateOverlayOpen(durationMs = 170): void {
+  try {
+    const screen = editor.getScreenSize();
+    const width = Math.max(36, Math.floor(screen.width * 0.64));
+    const height = Math.max(10, Math.floor(screen.height * 0.46));
     editor.animateArea(
       {
         x: Math.max(0, Math.floor((screen.width - width) / 2)),
@@ -101,8 +119,8 @@ function animateOverlayOpen(durationMs = 95): void {
 }
 
 function fresh_pretty_command_palette(): void {
-  animateOverlayOpen(85);
   editor.executeAction("command_palette");
+  animateOverlayOpen(150);
 }
 registerHandler("fresh_pretty_command_palette", fresh_pretty_command_palette);
 
@@ -2158,9 +2176,9 @@ function refreshViCommandMenu(input = ""): void {
 
 // Start command mode as a small floating command menu.
 function vi_command_mode(): void {
-  animateOverlayOpen(95);
   const ok = editor.startPrompt(":", "vi-command", true);
   if (!ok) return;
+  animateOverlayOpen(170);
 
   editor.setPromptTitle([
     { text: " ", style: { fg: "ui.help_key_fg", bold: true } },
@@ -3254,51 +3272,24 @@ let lastPositionValue = "";
 let lastFormatValue = "";
 let lastFallbackAt = 0;
 let updateSerial = 0;
-let positionAnimationSerial = 0;
-let displayedPosition: PrettyPosition | null = null;
+let lastActualPosition: PrettyPosition | null = null;
+let lastPositionFloatAt = 0;
 
 function progressValueFor(lang: string, percent: number, positionValue: string, formatValue: string): string {
   const progress = percent <= 0 ? "" : ` ${progressBar(percent)} ${percent}%`;
   return `${languageLabel(lang)}${progress} ${positionValue} ${formatValue}`;
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-async function animatePositionTo(
-  bufferId: number,
-  from: PrettyPosition,
-  to: PrettyPosition,
-  lang: string,
-  percent: number,
-  formatValue: string,
-): Promise<void> {
-  const serial = ++positionAnimationSerial;
-  const frames = 4;
-  const durationMs = 120;
-
-  for (let frame = 1; frame <= frames; frame++) {
-    await editor.delay(Math.round(durationMs / frames));
-    if (serial !== positionAnimationSerial || bufferId !== lastBufferId) return;
-
-    const t = easeOutCubic(frame / frames);
-    displayedPosition = {
-      line: Math.round(from.line + (to.line - from.line) * t),
-      col: Math.round(from.col + (to.col - from.col) * t),
-    };
-
-    const positionValue = positionText(displayedPosition);
-    const progressValue = progressValueFor(lang, percent, positionValue, formatValue);
-    editor.setStatusBarValue(bufferId, PROGRESS_TOKEN, progressValue);
-    lastProgressValue = progressValue;
-    lastPositionValue = positionValue;
-  }
-}
-
-function shouldAnimatePosition(from: PrettyPosition | null, to: PrettyPosition | null): from is PrettyPosition {
+function shouldFloatPosition(from: PrettyPosition | null, to: PrettyPosition | null): boolean {
   if (!from || !to) return false;
   return Math.abs(from.line - to.line) > 2 || Math.abs(from.col - to.col) > 8;
+}
+
+function animatePositionFloat(): void {
+  const now = Date.now();
+  if (now - lastPositionFloatAt < 90) return;
+  lastPositionFloatAt = now;
+  animateStatuslineRight("right", 95);
 }
 
 async function updatePrettyStatus(force = false): Promise<void> {
@@ -3315,8 +3306,8 @@ async function updatePrettyStatus(force = false): Promise<void> {
     lastProgressValue = "";
     lastPositionValue = "";
     lastFormatValue = "";
-    displayedPosition = null;
-    positionAnimationSerial++;
+    lastActualPosition = null;
+    lastPositionFloatAt = 0;
   }
 
   const viewport = editor.getViewport();
@@ -3337,17 +3328,10 @@ async function updatePrettyStatus(force = false): Promise<void> {
   // Drop stale async cursor/line calculations if another event arrived first.
   if (serial !== updateSerial) return;
 
-  const fromPosition = displayedPosition;
-  if (force || !shouldAnimatePosition(fromPosition, targetPosition)) {
-    displayedPosition = targetPosition;
-    positionAnimationSerial++;
-  } else if (targetPosition) {
-    animatePositionTo(bufferId, fromPosition, targetPosition, lang, percent, formatValue).catch((err) => {
-      editor.debug(`fresh_pretty_vim position animation: ${String(err)}`);
-    });
-  }
+  const shouldAnimatePosition = !force && shouldFloatPosition(lastActualPosition, targetPosition);
+  lastActualPosition = targetPosition;
 
-  const positionValue = positionText(displayedPosition);
+  const positionValue = positionText(targetPosition);
   const progressValue = progressValueFor(lang, percent, positionValue, formatValue);
 
   if (force || modeValue !== lastModeValue) {
@@ -3357,6 +3341,9 @@ async function updatePrettyStatus(force = false): Promise<void> {
   if (force || progressValue !== lastProgressValue) {
     editor.setStatusBarValue(bufferId, PROGRESS_TOKEN, progressValue);
     lastProgressValue = progressValue;
+    if (shouldAnimatePosition) {
+      animatePositionFloat();
+    }
   }
   if (force || positionValue !== lastPositionValue) {
     editor.setStatusBarValue(bufferId, POSITION_TOKEN, positionValue);
