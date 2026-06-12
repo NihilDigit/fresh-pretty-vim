@@ -1,0 +1,39 @@
+# fresh-pretty-vim
+
+A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidden chrome, and a Nerd Font statusline.
+
+## What it changes
+
+- Starts Fresh in Vi mode.
+- Adds arrow-key navigation to normal, operator-pending, visual, visual-line, and visual-block modes.
+- Shows a compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
+- Shows one right status segment: language, scroll progress, cursor position, and detected encoding.
+- Shows Vi command errors such as `:q` on modified buffers in a centered popup.
+- Hides the menu bar, tab bar, and vertical scrollbar.
+- Enables Markdown page view and line wrap.
+
+## Files
+
+```text
+plugins/fresh_pretty_vim.ts          # Vi mode + statusline
+plugins/fresh_pretty_vim.i18n.json   # Vi command translations
+config/config.json              # Fresh UI and plugin config
+install.sh                      # Copy files into ~/.config/fresh
+```
+
+## Install
+
+```bash
+./install.sh
+```
+
+The installer backs up existing target files with a timestamped `.bak` suffix, then copies the plugin and config into `~/.config/fresh`.
+
+Restart Fresh after installing.
+
+## Requirements
+
+- Fresh 0.4.x
+- A Nerd Font in the terminal
+- `file` from the system toolchain, used to detect file encoding for the statusline
+- `marksman`, if you want Markdown LSP support
