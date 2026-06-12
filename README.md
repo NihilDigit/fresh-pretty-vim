@@ -8,6 +8,7 @@ A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidd
 - Adds arrow-key navigation to normal, operator-pending, visual, visual-line, and visual-block modes.
 - Shows a compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
 - Shows one right status segment: language, scroll progress, cursor position, and detected encoding.
+- Opens `:` as a centered Vi command menu with common commands and filtering.
 - Shows Vi command errors such as `:q` on modified buffers in a centered popup.
 - Hides the menu bar, tab bar, and vertical scrollbar.
 - Enables Markdown page view and line wrap.

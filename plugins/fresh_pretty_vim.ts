@@ -2079,11 +2079,64 @@ for (const [name, key] of opCommands) {
 // Colon Command Mode (:w, :q, :wq, :q!, :e, etc.)
 // ============================================================================
 
-// Start command mode - shows ":" prompt at the bottom
+const VI_COMMAND_MENU: PromptSuggestion[] = [
+  { text: "w", value: "w", description: "Save current file", keybinding: ":w" },
+  { text: "q", value: "q", description: "Quit if all buffers are saved", keybinding: ":q" },
+  { text: "q!", value: "q!", description: "Force quit and discard unsaved changes", keybinding: ":q!" },
+  { text: "wq", value: "wq", description: "Save current file, then quit", keybinding: ":wq" },
+  { text: "e", value: "e ", description: "Open a file path", keybinding: ":e" },
+  { text: "enew", value: "enew", description: "Create an empty buffer", keybinding: ":enew" },
+  { text: "bd", value: "bd", description: "Close current buffer", keybinding: ":bd" },
+  { text: "ls", value: "ls", description: "List open buffers", keybinding: ":ls" },
+  { text: "noh", value: "noh", description: "Clear search highlight", keybinding: ":noh" },
+  { text: "set", value: "set ", description: "Change an editor option", keybinding: ":set" },
+  { text: "help", value: "help", description: "Show supported Vi commands", keybinding: ":help" },
+];
+
+function filteredViCommandMenu(input: string): PromptSuggestion[] {
+  const query = input.trim().toLowerCase();
+  if (!query) return VI_COMMAND_MENU;
+
+  return VI_COMMAND_MENU.filter((item) => {
+    const text = item.text.toLowerCase();
+    const value = (item.value ?? item.text).trim().toLowerCase();
+    const desc = item.description?.toLowerCase() ?? "";
+    return text.startsWith(query) || value.startsWith(query) || desc.includes(query);
+  });
+}
+
+function refreshViCommandMenu(input = ""): void {
+  const suggestions = filteredViCommandMenu(input);
+  editor.setPromptSuggestions(suggestions, suggestions.length > 0 ? 0 : null);
+  editor.setPromptStatus(suggestions.length > 0 ? `${suggestions.length} commands` : "type command");
+}
+
+// Start command mode as a small floating command menu.
 function vi_command_mode(): void {
-  editor.startPrompt(":", "vi-command");
+  const ok = editor.startPrompt(":", "vi-command", true);
+  if (!ok) return;
+
+  editor.setPromptTitle([
+    { text: " ", style: { fg: "ui.help_key_fg", bold: true } },
+    { text: "Vi command", style: { bold: true } },
+  ]);
+  editor.setPromptFooter([
+    { text: "Enter", style: { fg: "ui.help_key_fg", bold: true } },
+    { text: " run   ", style: { fg: "ui.popup_border_fg" } },
+    { text: "Esc", style: { fg: "ui.help_key_fg", bold: true } },
+    { text: " close   ", style: { fg: "ui.popup_border_fg" } },
+    { text: ":", style: { fg: "ui.help_key_fg", bold: true } },
+    { text: " prefix omitted", style: { fg: "ui.popup_border_fg" } },
+  ]);
+  refreshViCommandMenu();
 }
 registerHandler("vi_command_mode", vi_command_mode);
+
+editor.on("prompt_changed", (args) => {
+  if (args.prompt_type !== "vi-command") return true;
+  refreshViCommandMenu(args.input);
+  return true;
+});
 
 function showViCommandError(message: string): void {
   const ok = editor.showActionPopup({
