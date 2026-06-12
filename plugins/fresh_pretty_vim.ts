@@ -13,9 +13,9 @@ const editor = getEditor();
  * Uses the plugin API's executeAction() for true operator+motion composability:
  * any operator works with any motion via O(operators + motions) code.
  *
- * TODO: This plugin uses APIs that don't exist yet:
- * - getLineStartPosition() - for visual block mode column calculation
- * - defineMode with null parent - needs string parent mode
+ * Fresh 0.4 provides the plugin APIs used here, including getLineStartPosition()
+ * and defineMode(). Keep the bundled types/fresh.d.ts in sync with your Fresh
+ * install when upgrading Fresh.
  */
 
 // Vi mode state
@@ -2391,16 +2391,6 @@ async function executeViCommand(cmd: string): Promise<CommandResult> {
     return { error: editor.t("error.shell_not_supported") };
   }
 
-  // Handle +cmd syntax for :e +10 file (open file at line 10)
-  let plusCmd: string | null = null;
-  if (processedCmd.startsWith("+")) {
-    const plusMatch = processedCmd.match(/^\+(\S*)\s*(.*)/);
-    if (plusMatch) {
-      plusCmd = plusMatch[1] || "$"; // + alone means go to end
-      processedCmd = plusMatch[2];
-    }
-  }
-
   // Split command into command name and arguments
   // Supports: cmd, cmd!, cmd args, cmd! args
   const match = processedCmd.match(/^([a-zA-Z]\w*)(!)?(?:\s+(.*))?$/);
@@ -2431,6 +2421,34 @@ async function executeViCommand(cmd: string): Promise<CommandResult> {
 
   // Execute the command
   return executeCommand(cmdDef.name, force, args || null, range);
+}
+
+type OpenTarget = {
+  path: string;
+  line: number | null;
+  column: number | null;
+};
+
+function parseOpenTarget(args: string): OpenTarget {
+  const trimmed = args.trim();
+  const plusMatch = trimmed.match(/^\+(\S*)\s+(.+)$/);
+  if (!plusMatch) {
+    return { path: trimmed, line: 0, column: 0 };
+  }
+
+  const [, plusCmd, path] = plusMatch;
+  if (!plusCmd || plusCmd === "$") {
+    return { path: path.trim(), line: 1_000_000_000, column: 0 };
+  }
+
+  const line = parseInt(plusCmd, 10);
+  if (!Number.isNaN(line) && line > 0) {
+    return { path: path.trim(), line: line - 1, column: 0 };
+  }
+
+  // Fresh Pretty Vim only implements the common Vim form `:e +N file`.
+  // Other +cmd forms still open the file instead of pretending to run them.
+  return { path: path.trim(), line: 0, column: 0 };
 }
 
 // Execute a resolved command
@@ -2549,9 +2567,9 @@ async function executeCommand(
         editor.executeAction("revert");
         return { message: editor.t("status.file_reverted") };
       }
-      // Open the specified file
-      const path = args.trim();
-      editor.openFile(path, 0, 0);
+      // Open the specified file. Supports Vim's common `:e +10 file` form.
+      const target = parseOpenTarget(args);
+      editor.openFile(target.path, target.line, target.column);
       return {};
     }
 
@@ -2995,14 +3013,16 @@ function handleSetCommand(args: string): CommandResult {
 
     case "wrap": {
       // :set wrap - enable line wrap
-      editor.executeAction("toggle_wrap");
-      return { message: editor.t("status.line_wrap_toggled") };
+      const bufferId = editor.getActiveBufferId();
+      editor.setLineWrap(bufferId, null, true);
+      return { message: "Line wrap enabled" };
     }
 
     case "nowrap": {
       // :set nowrap - disable line wrap
-      editor.executeAction("toggle_wrap");
-      return { message: editor.t("status.line_wrap_toggled") };
+      const bufferId = editor.getActiveBufferId();
+      editor.setLineWrap(bufferId, null, false);
+      return { message: "Line wrap disabled" };
     }
 
     default: {

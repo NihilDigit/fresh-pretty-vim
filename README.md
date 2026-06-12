@@ -20,6 +20,7 @@ A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidd
 ```text
 plugins/fresh_pretty_vim.ts            # Vi mode + statusline
 plugins/fresh_pretty_vim.i18n.json     # Vi command translations
+types/fresh.d.ts                       # Fresh plugin API types for local checking
 config/config.json                     # Fresh UI and plugin config
 shell/fish/functions/fe.fish           # Optional fish wrapper, creates missing local files
 install.sh                             # Copy files into ~/.config/fresh
@@ -42,6 +43,8 @@ cp shell/fish/functions/fe.fish ~/.config/fish/functions/fe.fish
 ```
 
 `fe missing.md` creates `missing.md` first, then opens it with Fresh. Fresh location syntax also works, for example `fe notes.md:12`.
+
+The wrapper only skips obvious non-file arguments such as flags, `-`, URLs, and scp-style remote paths. If you pass a plain positional argument that is not meant to be a file, it may still create a local file. Set `FE_CREATE_MISSING=0` to disable automatic creation for one shell session.
 
 ## Requirements
 

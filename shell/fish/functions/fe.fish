@@ -1,4 +1,9 @@
 function fe --description 'Open Fresh editor, creating missing local files first'
+    if test "$FE_CREATE_MISSING" = 0
+        command fresh $argv
+        return $status
+    end
+
     if contains -- --cmd $argv
         command fresh $argv
         return $status
