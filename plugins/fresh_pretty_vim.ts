@@ -64,6 +64,48 @@ const state: ViState = {
   visualBlockAnchor: null,
 };
 
+function animateStatusline(from: PluginAnimationEdge = "left", durationMs = 70): void {
+  try {
+    const screen = editor.getScreenSize();
+    editor.animateArea(
+      {
+        x: 0,
+        y: Math.max(0, screen.height - 1),
+        width: Math.min(screen.width, 32),
+        height: 1,
+      },
+      { kind: "slideIn", from, durationMs, delayMs: 0 },
+    );
+  } catch (err) {
+    editor.debug(`fresh_pretty_vim animation: ${String(err)}`);
+  }
+}
+
+function animateOverlayOpen(durationMs = 95): void {
+  try {
+    const screen = editor.getScreenSize();
+    const width = Math.max(32, Math.floor(screen.width * 0.56));
+    const height = Math.max(8, Math.floor(screen.height * 0.36));
+    editor.animateArea(
+      {
+        x: Math.max(0, Math.floor((screen.width - width) / 2)),
+        y: Math.max(0, Math.floor((screen.height - height) / 2)),
+        width: Math.min(screen.width, width),
+        height: Math.min(screen.height, height),
+      },
+      { kind: "slideIn", from: "bottom", durationMs, delayMs: 0 },
+    );
+  } catch (err) {
+    editor.debug(`fresh_pretty_vim overlay animation: ${String(err)}`);
+  }
+}
+
+function fresh_pretty_command_palette(): void {
+  animateOverlayOpen(85);
+  editor.executeAction("command_palette");
+}
+registerHandler("fresh_pretty_command_palette", fresh_pretty_command_palette);
+
 // Safe getBufferText that clamps end to buffer length
 async function safeGetBufferText(bufferId: number, start: number, end: number): Promise<string | null> {
   const bufLen = editor.getBufferLength(bufferId);
@@ -145,6 +187,9 @@ function switchMode(newMode: ViMode): void {
   // vi-insert has read_only=false so normal typing works, but Escape is bound
   editor.setEditorMode(`vi-${newMode}`);
   editor.setStatus(getModeIndicator(newMode));
+  if (oldMode !== newMode) {
+    animateStatusline("left", 70);
+  }
 }
 
 // Capture text inserted during insert mode for '.' repeat
@@ -1770,7 +1815,7 @@ editor.defineMode("vi-normal", [
   [":", "vi_command_mode"],
 
   // Pass through to standard editor shortcuts
-  ["C-p", "command_palette"],
+  ["C-p", "fresh_pretty_command_palette"],
   ["C-q", "quit"],
 ], true); // read_only = true to prevent character insertion
 
@@ -1778,7 +1823,7 @@ editor.defineMode("vi-normal", [
 editor.defineMode("vi-insert", [
   ["Escape", "vi_escape"],
   // Pass through to standard editor shortcuts
-  ["C-p", "command_palette"],
+  ["C-p", "fresh_pretty_command_palette"],
   ["C-q", "quit"],
 ], false); // read_only = false to allow normal typing
 
@@ -1905,7 +1950,7 @@ editor.defineMode("vi-visual", [
   ["v", "vi_vis_escape"], // v again exits visual mode
 
   // Pass through to standard editor shortcuts
-  ["C-p", "command_palette"],
+  ["C-p", "fresh_pretty_command_palette"],
   ["C-q", "quit"],
 ], true);
 
@@ -1948,7 +1993,7 @@ editor.defineMode("vi-visual-line", [
   ["V", "vi_vis_escape"], // V again exits visual-line mode
 
   // Pass through to standard editor shortcuts
-  ["C-p", "command_palette"],
+  ["C-p", "fresh_pretty_command_palette"],
   ["C-q", "quit"],
 ], true);
 
@@ -1994,7 +2039,7 @@ editor.defineMode("vi-visual-block", [
   ["C-v", "vi_vblock_escape"], // Ctrl-v again exits visual-block mode
 
   // Pass through to standard editor shortcuts
-  ["C-p", "command_palette"],
+  ["C-p", "fresh_pretty_command_palette"],
   ["C-q", "quit"],
 ], true);
 
@@ -2113,6 +2158,7 @@ function refreshViCommandMenu(input = ""): void {
 
 // Start command mode as a small floating command menu.
 function vi_command_mode(): void {
+  animateOverlayOpen(95);
   const ok = editor.startPrompt(":", "vi-command", true);
   if (!ok) return;
 
@@ -3140,15 +3186,25 @@ function modeLabel(): string {
   }
 }
 
-async function positionLabel(): Promise<string> {
+type PrettyPosition = {
+  line: number;
+  col: number;
+};
+
+function positionText(position: PrettyPosition | null): string {
+  if (!position) return "--,--";
+  return `${position.line},${position.col}`;
+}
+
+async function currentPosition(): Promise<PrettyPosition | null> {
   const cursor = editor.getPrimaryCursor?.();
   if (!cursor || cursor.line === null) {
-    return "--,--";
+    return null;
   }
 
   const lineStart = await editor.getLineStartPosition(cursor.line);
   const col = lineStart === null ? 1 : Math.max(1, cursor.position - lineStart + 1);
-  return `${cursor.line + 1},${col}`;
+  return { line: cursor.line + 1, col };
 }
 
 const encodingCache: Record<string, string> = {};
@@ -3198,6 +3254,52 @@ let lastPositionValue = "";
 let lastFormatValue = "";
 let lastFallbackAt = 0;
 let updateSerial = 0;
+let positionAnimationSerial = 0;
+let displayedPosition: PrettyPosition | null = null;
+
+function progressValueFor(lang: string, percent: number, positionValue: string, formatValue: string): string {
+  const progress = percent <= 0 ? "" : ` ${progressBar(percent)} ${percent}%`;
+  return `${languageLabel(lang)}${progress} ${positionValue} ${formatValue}`;
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+async function animatePositionTo(
+  bufferId: number,
+  from: PrettyPosition,
+  to: PrettyPosition,
+  lang: string,
+  percent: number,
+  formatValue: string,
+): Promise<void> {
+  const serial = ++positionAnimationSerial;
+  const frames = 4;
+  const durationMs = 120;
+
+  for (let frame = 1; frame <= frames; frame++) {
+    await editor.delay(Math.round(durationMs / frames));
+    if (serial !== positionAnimationSerial || bufferId !== lastBufferId) return;
+
+    const t = easeOutCubic(frame / frames);
+    displayedPosition = {
+      line: Math.round(from.line + (to.line - from.line) * t),
+      col: Math.round(from.col + (to.col - from.col) * t),
+    };
+
+    const positionValue = positionText(displayedPosition);
+    const progressValue = progressValueFor(lang, percent, positionValue, formatValue);
+    editor.setStatusBarValue(bufferId, PROGRESS_TOKEN, progressValue);
+    lastProgressValue = progressValue;
+    lastPositionValue = positionValue;
+  }
+}
+
+function shouldAnimatePosition(from: PrettyPosition | null, to: PrettyPosition | null): from is PrettyPosition {
+  if (!from || !to) return false;
+  return Math.abs(from.line - to.line) > 2 || Math.abs(from.col - to.col) > 8;
+}
 
 async function updatePrettyStatus(force = false): Promise<void> {
   const serial = ++updateSerial;
@@ -3213,6 +3315,8 @@ async function updatePrettyStatus(force = false): Promise<void> {
     lastProgressValue = "";
     lastPositionValue = "";
     lastFormatValue = "";
+    displayedPosition = null;
+    positionAnimationSerial++;
   }
 
   const viewport = editor.getViewport();
@@ -3227,12 +3331,24 @@ async function updatePrettyStatus(force = false): Promise<void> {
 
   const lang = info.language || "text";
   const modeValue = modeLabel();
-  const positionValue = await positionLabel();
+  const targetPosition = await currentPosition();
   const formatValue = await formatLabel(info);
-  const progressValue = `${languageLabel(lang)} ${progressBar(percent)} ${percent}% ${positionValue} ${formatValue}`;
 
   // Drop stale async cursor/line calculations if another event arrived first.
   if (serial !== updateSerial) return;
+
+  const fromPosition = displayedPosition;
+  if (force || !shouldAnimatePosition(fromPosition, targetPosition)) {
+    displayedPosition = targetPosition;
+    positionAnimationSerial++;
+  } else if (targetPosition) {
+    animatePositionTo(bufferId, fromPosition, targetPosition, lang, percent, formatValue).catch((err) => {
+      editor.debug(`fresh_pretty_vim position animation: ${String(err)}`);
+    });
+  }
+
+  const positionValue = positionText(displayedPosition);
+  const progressValue = progressValueFor(lang, percent, positionValue, formatValue);
 
   if (force || modeValue !== lastModeValue) {
     editor.setStatusBarValue(bufferId, MODE_TOKEN, modeValue);

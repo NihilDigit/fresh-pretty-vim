@@ -6,6 +6,8 @@
     "show_tab_bar": false,
     "show_vertical_scrollbar": false,
     "restore_previous_session": false,
+    "animations": true,
+    "cursor_jump_animation": false,
     "status_bar": {
       "left": [
         "{fresh_pretty_vim:mode}"
