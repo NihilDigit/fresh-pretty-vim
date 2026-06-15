@@ -24,15 +24,30 @@ types/fresh.d.ts                       # Fresh plugin API types for local checki
 config/config.json                     # Fresh UI and plugin config
 shell/fish/functions/fe.fish           # Optional fish wrapper, creates missing local files
 install.sh                             # Copy files into ~/.config/fresh
+setup.ps1                              # Copy files into $env:APPDATA\fresh on Windows
 ```
 
-## Install
+## Quick Setup
+
+### Windows PowerShell
+
+```powershell
+git clone https://github.com/NihilDigit/fresh-pretty-vim.git
+cd fresh-pretty-vim
+powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+The Windows setup script installs into `$env:APPDATA\fresh`, which is the config directory reported by `fresh --cmd config paths`. To install somewhere else, set `FRESH_CONFIG_DIR` before running it.
+
+### macOS / Linux
 
 ```bash
+git clone https://github.com/NihilDigit/fresh-pretty-vim.git
+cd fresh-pretty-vim
 ./install.sh
 ```
 
-The installer backs up existing target files with a timestamped `.bak` suffix, then copies the plugin and config into `~/.config/fresh`.
+Both installers back up existing target files with a timestamped `.bak` suffix, then copy the plugin and config into the Fresh config directory.
 
 Restart Fresh after installing.
 
