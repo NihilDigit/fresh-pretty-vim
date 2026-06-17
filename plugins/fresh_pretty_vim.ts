@@ -31,9 +31,8 @@ function animateStatuslineRight(from: PluginAnimationEdge = "right", durationMs 
 // ============================================================================
 
 const MODE_TOKEN = "mode";
-const PROGRESS_TOKEN = "progress";
+const INFO_TOKEN = "info";
 const POSITION_TOKEN = "position";
-const FORMAT_TOKEN = "format";
 
 const VIM_ICON = "";
 
@@ -87,16 +86,6 @@ function languageLabel(language: string): string {
   return `${iconFor(language)} ${LANGUAGE_LABELS[language] ?? language}`;
 }
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
-
-function progressBar(percent: number): string {
-  const width = 6;
-  const filled = clamp(Math.round((percent / 100) * width), 0, width);
-  return "[" + "━".repeat(filled) + "─".repeat(width - filled) + "]";
-}
-
 function modeLabel(): string {
   const mode = editor.getEditorMode?.() ?? "";
   switch (mode) {
@@ -142,23 +131,17 @@ async function currentPosition(): Promise<PrettyPosition | null> {
   return { line: cursor.line + 1, col };
 }
 
-async function formatLabel(info: BufferInfo): Promise<string> {
-  return `󰉿 ${info.encoding || "UTF-8"}`;
-}
-
 let lastBufferId = 0;
 let lastModeValue = "";
-let lastProgressValue = "";
+let lastInfoValue = "";
 let lastPositionValue = "";
-let lastFormatValue = "";
 let lastFallbackAt = 0;
 let updateSerial = 0;
 let lastActualPosition: PrettyPosition | null = null;
 let lastPositionFloatAt = 0;
 
-function progressValueFor(lang: string, percent: number, positionValue: string, formatValue: string): string {
-  const progress = percent <= 0 ? "" : ` ${progressBar(percent)} ${percent}%`;
-  return `${languageLabel(lang)}${progress} ${positionValue} ${formatValue}`;
+function infoValueFor(lang: string, positionValue: string): string {
+  return `${languageLabel(lang)} ${positionValue}`;
 }
 
 function shouldFloatPosition(from: PrettyPosition | null, to: PrettyPosition | null): boolean {
@@ -184,27 +167,15 @@ async function updatePrettyStatus(force = false): Promise<void> {
   if (bufferId !== lastBufferId) {
     lastBufferId = bufferId;
     lastModeValue = "";
-    lastProgressValue = "";
+    lastInfoValue = "";
     lastPositionValue = "";
-    lastFormatValue = "";
     lastActualPosition = null;
     lastPositionFloatAt = 0;
   }
 
-  const viewport = editor.getViewport();
-  const position = typeof editor.getCursorPosition === "function"
-    ? editor.getCursorPosition()
-    : 0;
-
-  const basis = viewport?.topByte ?? position;
-  const percent = info.length > 0
-    ? clamp(Math.round((basis / info.length) * 100), 0, 100)
-    : 0;
-
   const lang = info.language || "text";
   const modeValue = modeLabel();
   const targetPosition = await currentPosition();
-  const formatValue = await formatLabel(info);
 
   // Drop stale async cursor/line calculations if another event arrived first.
   if (serial !== updateSerial) return;
@@ -213,15 +184,15 @@ async function updatePrettyStatus(force = false): Promise<void> {
   lastActualPosition = targetPosition;
 
   const positionValue = positionText(targetPosition);
-  const progressValue = progressValueFor(lang, percent, positionValue, formatValue);
+  const infoValue = infoValueFor(lang, positionValue);
 
   if (force || modeValue !== lastModeValue) {
     editor.setStatusBarValue(bufferId, MODE_TOKEN, modeValue);
     lastModeValue = modeValue;
   }
-  if (force || progressValue !== lastProgressValue) {
-    editor.setStatusBarValue(bufferId, PROGRESS_TOKEN, progressValue);
-    lastProgressValue = progressValue;
+  if (force || infoValue !== lastInfoValue) {
+    editor.setStatusBarValue(bufferId, INFO_TOKEN, infoValue);
+    lastInfoValue = infoValue;
     if (shouldAnimatePosition) {
       animatePositionFloat();
     }
@@ -229,10 +200,6 @@ async function updatePrettyStatus(force = false): Promise<void> {
   if (force || positionValue !== lastPositionValue) {
     editor.setStatusBarValue(bufferId, POSITION_TOKEN, positionValue);
     lastPositionValue = positionValue;
-  }
-  if (force || formatValue !== lastFormatValue) {
-    editor.setStatusBarValue(bufferId, FORMAT_TOKEN, formatValue);
-    lastFormatValue = formatValue;
   }
 }
 
@@ -250,9 +217,8 @@ function fallbackUpdate(): void {
 }
 
 editor.registerStatusBarElement(MODE_TOKEN, "Pretty Mode");
-editor.registerStatusBarElement(PROGRESS_TOKEN, "Pretty Progress");
+editor.registerStatusBarElement(INFO_TOKEN, "Pretty Info");
 editor.registerStatusBarElement(POSITION_TOKEN, "Pretty Position");
-editor.registerStatusBarElement(FORMAT_TOKEN, "Pretty Format");
 
 [
   "buffer_activated",

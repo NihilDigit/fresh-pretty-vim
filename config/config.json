@@ -4,7 +4,7 @@
   "editor": {
     "show_menu_bar": false,
     "show_tab_bar": false,
-    "show_vertical_scrollbar": false,
+    "show_vertical_scrollbar": true,
     "restore_previous_session": false,
     "animations": true,
     "cursor_jump_animation": false,
@@ -13,7 +13,8 @@
         "{fresh_pretty_vim:mode}"
       ],
       "right": [
-        "{fresh_pretty_vim:progress}"
+        "{fresh_pretty_vim:info}",
+        "{encoding}"
       ],
       "separator": " "
     }

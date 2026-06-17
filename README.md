@@ -1,6 +1,6 @@
 # fresh-pretty-vim
 
-A compact Fresh setup for single-file editing: Fresh built-in Vi mode, Markdown page view, hidden chrome, and a Nerd Font statusline.
+A compact Fresh setup for single-file editing: Fresh built-in Vi mode, Markdown page view, minimal chrome, and a Nerd Font statusline.
 
 ## Architecture
 
@@ -14,10 +14,10 @@ A compact Fresh setup for single-file editing: Fresh built-in Vi mode, Markdown 
 
 - Enables Fresh built-in `vi_mode` and configures it to auto-start.
 - Keeps the compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
-- Keeps one right status segment: language, scroll progress, cursor position, and Fresh's detected encoding.
-- Hides the scroll progress bar at the top of the file.
+- Keeps a compact right status area: language, cursor position, and Fresh's built-in encoding token.
+- Uses Fresh's native vertical scrollbar for scroll progress.
 - Disables Fresh's cursor-jump trail animation and keeps plugin motion short.
-- Hides the menu bar, tab bar, and vertical scrollbar.
+- Hides the menu bar and tab bar while keeping Fresh's native vertical scrollbar visible.
 - Enables Markdown page view and line wrap.
 
 ## Files
@@ -30,8 +30,6 @@ config/config.json                     # Fresh UI, built-in vi_mode, and plugin 
 shell/fish/functions/fe.fish           # Optional fish wrapper, creates missing local files
 install.sh                             # Copy files into ~/.config/fresh
 setup.ps1                              # Copy files into $env:APPDATA\fresh on Windows
-docs/fresh-vi-mode-gaps.md             # Fresh built-in vi_mode compatibility notes
-docs/pr-description.md                 # PR description draft for this refactor
 ```
 
 ## Quick Setup
@@ -73,6 +71,14 @@ The installed `config/config.json` keeps `fresh_pretty_vim` enabled for the stat
   "fresh_pretty_vim": {
     "enabled": true
   }
+}
+```
+
+The right status bar uses the plugin's appearance-only info token plus Fresh's native encoding token:
+
+```json
+"status_bar": {
+  "right": ["{fresh_pretty_vim:info}", "{encoding}"]
 }
 ```
 
