@@ -3245,44 +3245,8 @@ async function currentPosition(): Promise<PrettyPosition | null> {
   return { line: cursor.line + 1, col };
 }
 
-const encodingCache: Record<string, string> = {};
-
-function normalizeEncoding(raw: string): string {
-  const enc = raw.trim().toLowerCase();
-  const aliases: Record<string, string> = {
-    "us-ascii": "ASCII",
-    "ascii": "ASCII",
-    "utf-8": "UTF-8",
-    "utf-8-sig": "UTF-8-BOM",
-    "utf-16le": "UTF-16LE",
-    "utf-16be": "UTF-16BE",
-    "iso-8859-1": "ISO-8859-1",
-  };
-  return aliases[enc] ?? enc.toUpperCase();
-}
-
 async function formatLabel(info: BufferInfo): Promise<string> {
-  if (!info.path || info.is_virtual) {
-    return "󰉿 UTF-8";
-  }
-
-  const cached = encodingCache[info.path];
-  if (cached) {
-    return `󰉿 ${cached}`;
-  }
-
-  try {
-    const result = await editor.spawnProcess("file", ["-b", "--mime-encoding", info.path]);
-    if (result.exit_code === 0 && result.stdout.trim()) {
-      const encoding = normalizeEncoding(result.stdout);
-      encodingCache[info.path] = encoding;
-      return `󰉿 ${encoding}`;
-    }
-  } catch (err) {
-    editor.debug(`fresh_pretty_vim encoding: ${String(err)}`);
-  }
-
-  return "󰉿 UTF-8";
+  return `󰉿 ${info.encoding || "UTF-8"}`;
 }
 
 let lastBufferId = 0;

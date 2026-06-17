@@ -7,7 +7,7 @@ A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidd
 - Starts Fresh in Vi mode.
 - Adds arrow-key navigation to normal, operator-pending, visual, visual-line, and visual-block modes.
 - Shows a compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
-- Shows one right status segment: language, scroll progress, cursor position, and detected encoding.
+- Shows one right status segment: language, scroll progress, cursor position, and Fresh's detected encoding.
 - Hides the scroll progress bar at the top of the file.
 - Opens `:` as a centered Vi command menu with common commands and filtering.
 - Shows Vi command errors such as `:q` on modified buffers in a centered popup.
@@ -65,5 +65,4 @@ The wrapper only skips obvious non-file arguments such as flags, `-`, URLs, and 
 
 - Fresh 0.4.x
 - A Nerd Font in the terminal
-- `file` from the system toolchain, used to detect file encoding for the statusline
 - `marksman`, if you want Markdown LSP support

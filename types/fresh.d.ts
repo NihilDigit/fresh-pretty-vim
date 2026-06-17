@@ -421,6 +421,10 @@ type BufferInfo = {
 	*/
 	is_virtual: boolean;
 	/**
+	* Detected text encoding for this buffer, as displayed in Fresh's status bar.
+	*/
+	encoding: string;
+	/**
 	* Current view mode of the active split: "source" or "compose"
 	*/
 	view_mode: string;
