@@ -44,16 +44,16 @@
       "enabled": false
     },
     "vi_mode": {
-      "enabled": false
+      "enabled": true,
+      "settings": {
+        "autoStart": true
+      }
     },
     "vi_mode_custom": {
       "enabled": false
     },
     "fresh_pretty_vim": {
-      "enabled": true,
-      "settings": {
-        "autoStart": true
-      }
+      "enabled": true
     }
   }
 }

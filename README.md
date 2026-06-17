@@ -1,16 +1,21 @@
 # fresh-pretty-vim
 
-A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidden chrome, and a Nerd Font statusline.
+A compact Fresh setup for single-file editing: Fresh built-in Vi mode, Markdown page view, hidden chrome, and a Nerd Font statusline.
+
+## Architecture
+
+`fresh_pretty_vim` is now a pure appearance/profile shell around Fresh's built-in `vi_mode` plugin.
+
+- Fresh built-in `vi_mode` provides all Vim behavior: modes, keymaps, counts, operators, motions, registers, text objects, visual selections, repeat, and `:` command behavior.
+- `fresh_pretty_vim` provides only the statusline appearance and profile defaults.
+- This repository does not patch or duplicate Fresh's Vim implementation.
 
 ## What it changes
 
-- Starts Fresh in Vi mode.
-- Adds arrow-key navigation to normal, operator-pending, visual, visual-line, and visual-block modes.
-- Shows a compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
-- Shows one right status segment: language, scroll progress, cursor position, and Fresh's detected encoding.
+- Enables Fresh built-in `vi_mode` and configures it to auto-start.
+- Keeps the compact left mode chip: ` NORMAL`, ` INSERT`, ` VISUAL`.
+- Keeps one right status segment: language, scroll progress, cursor position, and Fresh's detected encoding.
 - Hides the scroll progress bar at the top of the file.
-- Opens `:` as a centered Vi command menu with common commands and filtering.
-- Shows Vi command errors such as `:q` on modified buffers in a centered popup.
 - Disables Fresh's cursor-jump trail animation and keeps plugin motion short.
 - Hides the menu bar, tab bar, and vertical scrollbar.
 - Enables Markdown page view and line wrap.
@@ -18,13 +23,15 @@ A compact Fresh setup for single-file editing: Vi mode, Markdown page view, hidd
 ## Files
 
 ```text
-plugins/fresh_pretty_vim.ts            # Vi mode + statusline
-plugins/fresh_pretty_vim.i18n.json     # Vi command translations
+plugins/fresh_pretty_vim.ts            # appearance/statusline only
+plugins/fresh_pretty_vim.i18n.json     # legacy translations retained for compatibility
 types/fresh.d.ts                       # Fresh plugin API types for local checking
-config/config.json                     # Fresh UI and plugin config
+config/config.json                     # Fresh UI, built-in vi_mode, and plugin config
 shell/fish/functions/fe.fish           # Optional fish wrapper, creates missing local files
 install.sh                             # Copy files into ~/.config/fresh
 setup.ps1                              # Copy files into $env:APPDATA\fresh on Windows
+docs/fresh-vi-mode-gaps.md             # Fresh built-in vi_mode compatibility notes
+docs/pr-description.md                 # PR description draft for this refactor
 ```
 
 ## Quick Setup
@@ -51,6 +58,26 @@ Both installers back up existing target files with a timestamped `.bak` suffix, 
 
 Restart Fresh after installing.
 
+## Configuration
+
+The installed `config/config.json` keeps `fresh_pretty_vim` enabled for the statusline and profile defaults, and enables Fresh built-in `vi_mode` with auto-start:
+
+```json
+"plugins": {
+  "vi_mode": {
+    "enabled": true,
+    "settings": {
+      "autoStart": true
+    }
+  },
+  "fresh_pretty_vim": {
+    "enabled": true
+  }
+}
+```
+
+Do not add Vim keymaps to `fresh_pretty_vim`; configure or improve Vim behavior in Fresh's built-in `vi_mode` upstream.
+
 ## Optional fish wrapper
 
 ```bash
@@ -63,6 +90,6 @@ The wrapper only skips obvious non-file arguments such as flags, `-`, URLs, and 
 
 ## Requirements
 
-- Fresh 0.4.x
-- A Nerd Font in the terminal
-- `marksman`, if you want Markdown LSP support
+- Fresh with the built-in `vi_mode` plugin and its `autoStart` setting.
+- A Nerd Font in the terminal.
+- `marksman`, if you want Markdown LSP support.
